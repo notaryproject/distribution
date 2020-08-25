@@ -12,6 +12,7 @@ import (
 	"github.com/docker/distribution/manifest/ocischema"
 	"github.com/docker/distribution/manifest/schema1"
 	"github.com/docker/distribution/manifest/schema2"
+	"github.com/docker/distribution/registry/storage/driver"
 	"github.com/opencontainers/go-digest"
 	v1 "github.com/opencontainers/image-spec/specs-go/v1"
 )
@@ -41,10 +42,15 @@ func (o skipLayerOption) Apply(m distribution.ManifestService) error {
 	return fmt.Errorf("skip layer verification only valid for manifestStore")
 }
 
+// referrerMetadataStoreFunc describes a function that returns a referrer metadata store
+// for the given manifest specified by digest and the media type of the metadata.
+type referrerMetadataStoreFunc func(digest digest.Digest, mediaType string) *linkedBlobStore
+
 type manifestStore struct {
 	repository *repository
 	blobStore  *linkedBlobStore
 	ctx        context.Context
+	referrerMetadataStoreFunc
 
 	skipDependencyVerification bool
 
@@ -52,6 +58,7 @@ type manifestStore struct {
 	schema2Handler      ManifestHandler
 	ocischemaHandler    ManifestHandler
 	manifestListHandler ManifestHandler
+	ociIndexHandler     ManifestHandler
 }
 
 var _ distribution.ManifestService = &manifestStore{}
@@ -121,6 +128,13 @@ func (ms *manifestStore) Get(ctx context.Context, dgst digest.Digest, options ..
 		default:
 			return nil, distribution.ErrManifestVerification{fmt.Errorf("unrecognized manifest content type %s", versioned.MediaType)}
 		}
+	case 3:
+		switch versioned.MediaType {
+		case v1.MediaTypeImageIndex:
+			return ms.ociIndexHandler.Unmarshal(ctx, dgst, content)
+		default:
+			return nil, distribution.ErrManifestVerification{fmt.Errorf("unrecognized manifest content type %s", versioned.MediaType)}
+		}
 	}
 
 	return nil, fmt.Errorf("unrecognized manifest schema version %d", versioned.SchemaVersion)
@@ -129,7 +143,7 @@ func (ms *manifestStore) Get(ctx context.Context, dgst digest.Digest, options ..
 func (ms *manifestStore) Put(ctx context.Context, manifest distribution.Manifest, options ...distribution.ManifestServiceOption) (digest.Digest, error) {
 	dcontext.GetLogger(ms.ctx).Debug("(*manifestStore).Put")
 
-	switch manifest.(type) {
+	switch tm := manifest.(type) {
 	case *schema1.SignedManifest:
 		return ms.schema1Handler.Put(ctx, manifest, ms.skipDependencyVerification)
 	case *schema2.DeserializedManifest:
@@ -137,10 +151,34 @@ func (ms *manifestStore) Put(ctx context.Context, manifest distribution.Manifest
 	case *ocischema.DeserializedManifest:
 		return ms.ocischemaHandler.Put(ctx, manifest, ms.skipDependencyVerification)
 	case *manifestlist.DeserializedManifestList:
+		if tm.MediaType == v1.MediaTypeImageIndex && tm.SchemaVersion == 3 {
+			return ms.ociIndexHandler.Put(ctx, manifest, ms.skipDependencyVerification)
+		}
 		return ms.manifestListHandler.Put(ctx, manifest, ms.skipDependencyVerification)
 	}
 
 	return "", fmt.Errorf("unrecognized manifest type %T", manifest)
+}
+
+// ReferrerMetadata returns all manifest referrer metadata filtered by the given mediaType.
+func (ms *manifestStore) ReferrerMetadata(ctx context.Context, dgst digest.Digest, mediaType string) ([]digest.Digest, error) {
+	dcontext.GetLogger(ms.ctx).Debug("(*manifestStore).ReferrerMetadata")
+
+	referrerMetadataStore := ms.referrerMetadataStoreFunc(dgst, mediaType)
+
+	var metadataDgsts []digest.Digest
+
+	err := referrerMetadataStore.Enumerate(ctx, func(metadataDgst digest.Digest) error {
+		metadataDgsts = append(metadataDgsts, metadataDgst)
+		return nil
+	})
+
+	switch err.(type) {
+	case driver.PathNotFoundError:
+		return metadataDgsts, nil
+	}
+
+	return metadataDgsts, err
 }
 
 // Delete removes the revision of the specified manifest.

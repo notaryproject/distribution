@@ -26,7 +26,7 @@ var SchemaVersion = manifest.Versioned{
 // OCISchemaVersion provides a pre-initialized version structure for this
 // packages OCIschema version of the manifest.
 var OCISchemaVersion = manifest.Versioned{
-	SchemaVersion: 2,
+	SchemaVersion: 3,
 	MediaType:     v1.MediaTypeImageIndex,
 }
 
@@ -118,6 +118,9 @@ type ManifestList struct {
 
 	// Config references the image configuration as a blob.
 	Manifests []ManifestDescriptor `json:"manifests"`
+
+	// Config references the image configuration as a blob.
+	Config distribution.Descriptor `json:"config,omitempty"`
 }
 
 // References returns the distribution descriptors for the referenced image

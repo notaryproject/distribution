@@ -74,6 +74,8 @@ const (
 // 	manifestRevisionsPathSpec:      <root>/v2/repositories/<name>/_manifests/revisions/
 // 	manifestRevisionPathSpec:      <root>/v2/repositories/<name>/_manifests/revisions/<algorithm>/<hex digest>/
 // 	manifestRevisionLinkPathSpec:  <root>/v2/repositories/<name>/_manifests/revisions/<algorithm>/<hex digest>/link
+//  manifestReferrerMetadataPathSpec:  <root>/v2/repositories/<name>/_manifests/revisions/<algorithm>/<hex digest>/rm/<media type>
+//  manifestReferrerMetadataLinkPathSpec:  <root>/v2/repositories/<name>/_manifests/revisions/<algorithm>/<hex digest>/rm/<media type>/<algorithm>/<hex digest>/link
 //
 //	Tags:
 //
@@ -193,6 +195,25 @@ func pathFor(spec pathSpec) (string, error) {
 		}
 
 		return path.Join(root, path.Join(components...)), nil
+	case manifestReferrerMetadataPathSpec:
+		revisionPrefix, err := pathFor(manifestRevisionPathSpec{name: v.name, revision: v.revision})
+		if err != nil {
+			return "", err
+		}
+
+		return path.Join(revisionPrefix, "rm", v.metadataMediaType), nil
+	case manifestReferrerMetadataLinkPathSpec:
+		metadataPrefix, err := pathFor(manifestReferrerMetadataPathSpec{name: v.name, revision: v.revision, metadataMediaType: v.metadataMediaType})
+		if err != nil {
+			return "", err
+		}
+
+		metadataSuffix, err := digestPathComponents(v.metadataDigest, false)
+		if err != nil {
+			return "", err
+		}
+
+		return path.Join(append(append([]string{metadataPrefix}, metadataSuffix...), "link")...), nil
 	case layerLinkPathSpec:
 		components, err := digestPathComponents(v.digest, false)
 		if err != nil {
@@ -318,6 +339,29 @@ type manifestTagIndexPathSpec struct {
 }
 
 func (manifestTagIndexPathSpec) pathSpec() {}
+
+// manifestReferrerMetadataPathSpec describes the directory path for
+// manifest referrer metadata.
+type manifestReferrerMetadataPathSpec struct {
+	name              string
+	revision          digest.Digest
+	metadataMediaType string
+}
+
+func (manifestReferrerMetadataPathSpec) pathSpec() {}
+
+// manifestReferrerMetadataLinkPathSpec describes the path components required to look
+// up the data link for a referrer metadata of a manifest. If this file is not present,
+// the metadata is not linked to the manifest. The contents of this file should
+// just be the digest.
+type manifestReferrerMetadataLinkPathSpec struct {
+	name              string
+	revision          digest.Digest
+	metadataMediaType string
+	metadataDigest    digest.Digest
+}
+
+func (manifestReferrerMetadataLinkPathSpec) pathSpec() {}
 
 // manifestTagIndexEntryPathSpec contains the entries of the index by revision.
 type manifestTagIndexEntryPathSpec struct {
