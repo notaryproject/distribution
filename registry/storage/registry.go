@@ -3,12 +3,14 @@ package storage
 import (
 	"context"
 	"regexp"
+	"strings"
 
 	"github.com/docker/distribution"
 	"github.com/docker/distribution/reference"
 	"github.com/docker/distribution/registry/storage/cache"
 	storagedriver "github.com/docker/distribution/registry/storage/driver"
 	"github.com/docker/libtrust"
+	"github.com/opencontainers/go-digest"
 )
 
 // registry is the top-level implementation of Registry for use in the storage
@@ -247,6 +249,40 @@ func (repo *repository) Manifests(ctx context.Context, options ...distribution.M
 		linkDirectoryPathSpec: manifestDirectoryPathSpec,
 	}
 
+	referrersStoreFuncImpl := func(referredRevision digest.Digest, referrerTypeRaw string) *linkedBlobStore {
+		// NOTE (aviral26)
+		// This might cause a problem on Windows file system because of long file paths.
+		// A workaround is to run this server using wsl2.
+		//
+		// The choice for using sha256 digests as referrer types is completely arbitrary and intended
+		// to be used just in this prototype for demo purposes.
+		referrerType := strings.Split(digest.FromString(referrerTypeRaw).String(), ":")[1]
+
+		return &linkedBlobStore{
+			blobStore:  repo.blobStore,
+			repository: repo,
+			ctx:        ctx,
+			linkPathFns: []linkPathFunc{func(name string, referrerRevision digest.Digest) (string, error) {
+				return pathFor(referrerRevisionLinkPathSpec{
+					name:             name,
+					referredRevision: referredRevision,
+					referrerType:     referrerType,
+					referrerRevision: referrerRevision,
+				})
+			}},
+			linkDirectoryPathSpec: referrersPathSpec{
+				name:             repo.Named().Name(),
+				referredRevision: referredRevision,
+				referrerType:     referrerType,
+			},
+			blobAccessController: &linkedBlobStatter{
+				blobStore:   repo.blobStore,
+				repository:  repo,
+				linkPathFns: []linkPathFunc{manifestRevisionLinkPath},
+			},
+		}
+	}
+
 	var v1Handler ManifestHandler
 	if repo.schema1Enabled {
 		v1Handler = &signedManifestHandler{
@@ -267,10 +303,11 @@ func (repo *repository) Manifests(ctx context.Context, options ...distribution.M
 	}
 
 	ms := &manifestStore{
-		ctx:            ctx,
-		repository:     repo,
-		blobStore:      blobStore,
-		schema1Handler: v1Handler,
+		ctx:                ctx,
+		repository:         repo,
+		blobStore:          blobStore,
+		referrersStoreFunc: referrersStoreFuncImpl,
+		schema1Handler:     v1Handler,
 		schema2Handler: &schema2ManifestHandler{
 			ctx:          ctx,
 			repository:   repo,
@@ -281,6 +318,12 @@ func (repo *repository) Manifests(ctx context.Context, options ...distribution.M
 			ctx:        ctx,
 			repository: repo,
 			blobStore:  blobStore,
+		},
+		ociArtifactHandler: &ociArtifactHandler{
+			ctx:                ctx,
+			repository:         repo,
+			blobStore:          blobStore,
+			referrersStoreFunc: referrersStoreFuncImpl,
 		},
 		ocischemaHandler: &ocischemaManifestHandler{
 			ctx:          ctx,

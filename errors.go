@@ -24,6 +24,15 @@ var ErrUnsupported = errors.New("operation unsupported")
 // manifest but the registry is configured to reject it
 var ErrSchemaV1Unsupported = errors.New("manifest schema v1 unsupported")
 
+// ErrArtifactTypeUnsupported is returned if the given artifact type is unsupported.
+type ErrArtifactTypeUnsupported struct {
+	ArtifactType string
+}
+
+func (err ErrArtifactTypeUnsupported) Error() string {
+	return fmt.Sprintf("unknown artifact type=%s", err.ArtifactType)
+}
+
 // ErrTagUnknown is returned if the given tag is not known by the tag service
 type ErrTagUnknown struct {
 	Tag string

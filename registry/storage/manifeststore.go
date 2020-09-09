@@ -8,10 +8,13 @@ import (
 	"github.com/docker/distribution"
 	dcontext "github.com/docker/distribution/context"
 	"github.com/docker/distribution/manifest"
+	"github.com/docker/distribution/manifest/artifact"
 	"github.com/docker/distribution/manifest/manifestlist"
 	"github.com/docker/distribution/manifest/ocischema"
 	"github.com/docker/distribution/manifest/schema1"
 	"github.com/docker/distribution/manifest/schema2"
+	"github.com/docker/distribution/registry/storage/driver"
+	v2 "github.com/notaryproject/artifacts/specs-go/v2"
 	"github.com/opencontainers/go-digest"
 	v1 "github.com/opencontainers/image-spec/specs-go/v1"
 )
@@ -41,10 +44,16 @@ func (o skipLayerOption) Apply(m distribution.ManifestService) error {
 	return fmt.Errorf("skip layer verification only valid for manifestStore")
 }
 
+// referrersStoreFunc describes a function that returns the referrers store
+// for the given manifest, specified by referredRevision, of the given referrerType.
+// A referrers store provides links to referrer manifests.
+type referrersStoreFunc func(referredRevision digest.Digest, referrerType string) *linkedBlobStore
+
 type manifestStore struct {
 	repository *repository
 	blobStore  *linkedBlobStore
 	ctx        context.Context
+	referrersStoreFunc
 
 	skipDependencyVerification bool
 
@@ -52,6 +61,7 @@ type manifestStore struct {
 	schema2Handler      ManifestHandler
 	ocischemaHandler    ManifestHandler
 	manifestListHandler ManifestHandler
+	ociArtifactHandler  ManifestHandler
 }
 
 var _ distribution.ManifestService = &manifestStore{}
@@ -106,6 +116,8 @@ func (ms *manifestStore) Get(ctx context.Context, dgst digest.Digest, options ..
 			return ms.ocischemaHandler.Unmarshal(ctx, dgst, content)
 		case manifestlist.MediaTypeManifestList, v1.MediaTypeImageIndex:
 			return ms.manifestListHandler.Unmarshal(ctx, dgst, content)
+		case v2.MediaTypeArtifactManifest:
+			return ms.ociArtifactHandler.Unmarshal(ctx, dgst, content)
 		case "":
 			// OCI image or image index - no media type in the content
 
@@ -138,9 +150,39 @@ func (ms *manifestStore) Put(ctx context.Context, manifest distribution.Manifest
 		return ms.ocischemaHandler.Put(ctx, manifest, ms.skipDependencyVerification)
 	case *manifestlist.DeserializedManifestList:
 		return ms.manifestListHandler.Put(ctx, manifest, ms.skipDependencyVerification)
+	case *artifact.DeserializedArtifact:
+		return ms.ociArtifactHandler.Put(ctx, manifest, ms.skipDependencyVerification)
 	}
 
 	return "", fmt.Errorf("unrecognized manifest type %T", manifest)
+}
+
+// Referrers returns referrer manifests filtered by the given referrerType.
+func (ms *manifestStore) Referrers(ctx context.Context, dgst digest.Digest, referrerType string) ([]distribution.Manifest, error) {
+	dcontext.GetLogger(ms.ctx).Debug("(*manifestStore).Referrers")
+
+	referrerMetadataStore := ms.referrersStoreFunc(dgst, referrerType)
+
+	var referrerManifests []distribution.Manifest
+
+	err := referrerMetadataStore.Enumerate(ctx, func(referrerManifestDgst digest.Digest) error {
+		referrerManifest, err := ms.Get(ctx, referrerManifestDgst)
+		if err != nil {
+			return err
+		}
+		referrerManifests = append(referrerManifests, referrerManifest)
+		return nil
+	})
+
+	if err != nil {
+		switch err.(type) {
+		case driver.PathNotFoundError:
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	return referrerManifests, nil
 }
 
 // Delete removes the revision of the specified manifest.

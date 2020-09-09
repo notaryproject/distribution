@@ -706,6 +706,71 @@ var routeDescriptors = []RouteDescriptor{
 	},
 
 	{
+		Name:        RouteNameManifestLinkedArtifacts,
+		Path:        "/v2/_ext/oci-artifacts/v1/{name:" + reference.NameRegexp.String() + "}/manifests/{reference:" + reference.TagRegexp.String() + "|" + digest.DigestRegexp.String() + "}/links",
+		Entity:      "Linked artifacts",
+		Description: "Retrieve information about artifacts linked to this manifest.",
+		Methods: []MethodDescriptor{
+			{
+				Method:      "GET",
+				Description: "Fetch a list of artifacts linked to the manifest.",
+				Requests: []RequestDescriptor{
+					{
+						Name:        "Links",
+						Description: "Return a list of all artifacts linked to the given manifest filtered by the given artifact media type.",
+						Headers: []ParameterDescriptor{
+							hostHeader,
+							authHeader,
+						},
+						PathParameters: []ParameterDescriptor{
+							nameParameterDescriptor,
+							referenceParameterDescriptor,
+						},
+						QueryParameters: []ParameterDescriptor{
+							{
+								Name:        "artifact-type",
+								Type:        "query",
+								Format:      "<artifactType>",
+								Description: `Artifact type of the requested linked artifacts.`,
+							},
+						},
+						Successes: []ResponseDescriptor{
+							{
+								StatusCode:  http.StatusOK,
+								Description: "A list of artifact manifests for the given manifest filtered by the given artifact type.",
+								Headers: []ParameterDescriptor{
+									{
+										Name:        "Content-Length",
+										Type:        "integer",
+										Description: "Length of the JSON response body.",
+										Format:      "<length>",
+									},
+								},
+								Body: BodyDescriptor{
+									ContentType: "application/json",
+									Format: `
+{
+	"digest": "<manifest digest>",
+	"tag": "<manifest tag>",
+	"@nextLink": "{opaqueUrl}",
+	"links": [
+			{<artifact-manifest>},
+			{<artifact-manifest>},
+			.
+			.
+	]
+}
+									`,
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	},
+
+	{
 		Name:        RouteNameBlob,
 		Path:        "/v2/{name:" + reference.NameRegexp.String() + "}/blobs/{digest:" + digest.DigestRegexp.String() + "}",
 		Entity:      "Blob",

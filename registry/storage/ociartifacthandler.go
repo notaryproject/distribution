@@ -1,0 +1,127 @@
+package storage
+
+import (
+	"context"
+	"fmt"
+
+	"github.com/docker/distribution"
+	dcontext "github.com/docker/distribution/context"
+	"github.com/docker/distribution/manifest/artifact"
+	v2 "github.com/notaryproject/artifacts/specs-go/v2"
+	"github.com/opencontainers/go-digest"
+)
+
+// ociArtifactHandler is a ManifestHandler that covers OCI Artifacts.
+type ociArtifactHandler struct {
+	repository distribution.Repository
+	blobStore  distribution.BlobStore
+	ctx        context.Context
+	referrersStoreFunc
+}
+
+func (ah *ociArtifactHandler) Unmarshal(ctx context.Context, dgst digest.Digest, content []byte) (distribution.Manifest, error) {
+	dcontext.GetLogger(ah.ctx).Debug("(*artifactHandler).Unmarshal")
+
+	da := &artifact.DeserializedArtifact{}
+	if err := da.UnmarshalJSON(content); err != nil {
+		return nil, err
+	}
+
+	return da, nil
+}
+
+func (ah *ociArtifactHandler) Put(ctx context.Context, artifactManfiest distribution.Manifest, skipDependencyVerification bool) (digest.Digest, error) {
+	dcontext.GetLogger(ah.ctx).Debug("(*artifactHandler).Put")
+
+	da, ok := artifactManfiest.(*artifact.DeserializedArtifact)
+	if !ok {
+		return "", fmt.Errorf("wrong type put to artifactHandler: %T", artifactManfiest)
+	}
+
+	if err := ah.verifyManifest(ah.ctx, *da, skipDependencyVerification); err != nil {
+		return "", err
+	}
+
+	mt, payload, err := da.Payload()
+	if err != nil {
+		return "", err
+	}
+
+	revision, err := ah.blobStore.Put(ctx, mt, payload)
+	if err != nil {
+		dcontext.GetLogger(ctx).Errorf("error putting payload into blobstore: %v", err)
+		return "", err
+	}
+
+	err = ah.linkManifests(ctx, *da, revision.Digest)
+	if err != nil {
+		dcontext.GetLogger(ctx).Errorf("error linking referrer metadata: %v", err)
+		return "", err
+	}
+
+	return revision.Digest, nil
+}
+
+// verifyManifest ensures that the manifest content is valid from the
+// perspective of the registry. As a policy, the registry only tries to
+// store valid content, leaving trust policies of that content up to
+// consumers.
+func (ah *ociArtifactHandler) verifyManifest(ctx context.Context, da artifact.DeserializedArtifact, skipDependencyVerification bool) error {
+	var errs distribution.ErrManifestVerification
+
+	if !skipDependencyVerification {
+
+		daArtifactType := da.ArtifactType()
+		if daArtifactType != v2.ArtifactTypeNotaryV2 {
+			return append(errs, distribution.ErrArtifactTypeUnsupported{ArtifactType: daArtifactType})
+		}
+
+		blobStore := ah.repository.Blobs(ctx)
+
+		// All references must exist.
+		for _, blobDesc := range da.References() {
+			desc, err := blobStore.Stat(ctx, blobDesc.Digest)
+			if err != nil && err != distribution.ErrBlobUnknown {
+				errs = append(errs, err)
+			}
+			if err != nil || desc.Digest == "" {
+				// On error here, we always append unknown blob errors.
+				errs = append(errs, distribution.ErrManifestBlobUnknown{Digest: blobDesc.Digest})
+			}
+		}
+
+		manifestService, err := ah.repository.Manifests(ctx)
+		if err != nil {
+			return err
+		}
+
+		// All manifests to link to must exist.
+		for _, manifestDesc := range da.Manifests() {
+			exists, err := manifestService.Exists(ctx, manifestDesc.Digest)
+			if err != nil {
+				errs = append(errs, err)
+			} else {
+				if !exists {
+					errs = append(errs, distribution.ErrManifestUnknownRevision{Revision: manifestDesc.Digest})
+				}
+			}
+		}
+	}
+
+	if len(errs) != 0 {
+		return errs
+	}
+
+	return nil
+}
+
+func (ah *ociArtifactHandler) linkManifests(ctx context.Context, da artifact.DeserializedArtifact, revision digest.Digest) error {
+	daArtifactType := da.ArtifactType()
+	// Link the artifact as referrer metadata to each dependsOn manifest.
+	for _, manifestDesc := range da.Manifests() {
+		if err := ah.referrersStoreFunc(manifestDesc.Digest, daArtifactType).linkBlob(ctx, distribution.Descriptor{Digest: revision}); err != nil {
+			return err
+		}
+	}
+	return nil
+}
