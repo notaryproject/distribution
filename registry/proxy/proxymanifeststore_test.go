@@ -61,6 +61,11 @@ func (sm statsManifest) Put(ctx context.Context, manifest distribution.Manifest,
 	return sm.manifests.Put(ctx, manifest)
 }
 
+func (sm statsManifest) ReferrerMetadata(ctx context.Context, dgst digest.Digest, mediaType string) ([]digest.Digest, error) {
+	sm.stats["referrermetadata"]++
+	return sm.ReferrerMetadata(ctx, dgst, mediaType)
+}
+
 type mockChallenger struct {
 	sync.Mutex
 	count int

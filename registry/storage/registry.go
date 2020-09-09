@@ -2,13 +2,18 @@ package storage
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/binary"
+	"fmt"
 	"regexp"
+	"strings"
 
 	"github.com/docker/distribution"
 	"github.com/docker/distribution/reference"
 	"github.com/docker/distribution/registry/storage/cache"
 	storagedriver "github.com/docker/distribution/registry/storage/driver"
 	"github.com/docker/libtrust"
+	"github.com/opencontainers/go-digest"
 )
 
 // registry is the top-level implementation of Registry for use in the storage
@@ -247,6 +252,35 @@ func (repo *repository) Manifests(ctx context.Context, options ...distribution.M
 		linkDirectoryPathSpec: manifestDirectoryPathSpec,
 	}
 
+	referrerMetadataFunc := func(manifestDigest digest.Digest, metadataMediaType string) *linkedBlobStore {
+		sha256Bytes := sha256.Sum256([]byte(strings.ToLower(metadataMediaType)))
+		canonical := fmt.Sprint(binary.BigEndian.Uint32(sha256Bytes[:]))
+
+		return &linkedBlobStore{
+			blobStore:  repo.blobStore,
+			repository: repo,
+			ctx:        ctx,
+			linkPathFns: []linkPathFunc{func(name string, metadataDigest digest.Digest) (string, error) {
+				return pathFor(manifestReferrerMetadataLinkPathSpec{
+					name:              name,
+					revision:          manifestDigest,
+					metadataMediaType: canonical,
+					metadataDigest:    metadataDigest,
+				})
+			}},
+			linkDirectoryPathSpec: manifestReferrerMetadataPathSpec{
+				name:              repo.Named().Name(),
+				revision:          manifestDigest,
+				metadataMediaType: canonical,
+			},
+			blobAccessController: &linkedBlobStatter{
+				blobStore:   repo.blobStore,
+				repository:  repo,
+				linkPathFns: []linkPathFunc{blobLinkPath},
+			},
+		}
+	}
+
 	var v1Handler ManifestHandler
 	if repo.schema1Enabled {
 		v1Handler = &signedManifestHandler{
@@ -267,10 +301,11 @@ func (repo *repository) Manifests(ctx context.Context, options ...distribution.M
 	}
 
 	ms := &manifestStore{
-		ctx:            ctx,
-		repository:     repo,
-		blobStore:      blobStore,
-		schema1Handler: v1Handler,
+		ctx:                       ctx,
+		repository:                repo,
+		blobStore:                 blobStore,
+		referrerMetadataStoreFunc: referrerMetadataFunc,
+		schema1Handler:            v1Handler,
 		schema2Handler: &schema2ManifestHandler{
 			ctx:          ctx,
 			repository:   repo,
@@ -281,6 +316,12 @@ func (repo *repository) Manifests(ctx context.Context, options ...distribution.M
 			ctx:        ctx,
 			repository: repo,
 			blobStore:  blobStore,
+		},
+		ociIndexHandler: &ociIndexHandler{
+			ctx:                       ctx,
+			repository:                repo,
+			blobStore:                 blobStore,
+			referrerMetadataStoreFunc: referrerMetadataFunc,
 		},
 		ocischemaHandler: &ocischemaManifestHandler{
 			ctx:          ctx,

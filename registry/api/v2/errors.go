@@ -70,6 +70,14 @@ var (
 		HTTPStatusCode: http.StatusNotFound,
 	})
 
+	// ErrorCodeManifestMetadataMediaTypeUnspecified returned when image manifest referrer metadata media type is not specified.
+	ErrorCodeManifestMetadataMediaTypeUnspecified = errcode.Register(errGroup, errcode.ErrorDescriptor{
+		Value:          "METADATA_MEDIA_TYPE_UNSPECIFIED",
+		Message:        "manifest referrer metadata media type is not specified",
+		Description:    `This error is returned when the manifest referrer metadata media type is not specified.`,
+		HTTPStatusCode: http.StatusBadRequest,
+	})
+
 	// ErrorCodeManifestInvalid returned when an image manifest is invalid,
 	// typically during a PUT operation. This error encompasses all errors
 	// encountered during manifest validation that aren't signature errors.
@@ -98,7 +106,7 @@ var (
 	ErrorCodeManifestBlobUnknown = errcode.Register(errGroup, errcode.ErrorDescriptor{
 		Value:   "MANIFEST_BLOB_UNKNOWN",
 		Message: "blob unknown to registry",
-		Description: `This error may be returned when a manifest blob is 
+		Description: `This error may be returned when a manifest blob is
 		unknown to the registry.`,
 		HTTPStatusCode: http.StatusBadRequest,
 	})
