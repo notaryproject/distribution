@@ -2,9 +2,6 @@ package storage
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/binary"
-	"fmt"
 	"regexp"
 	"strings"
 
@@ -253,8 +250,12 @@ func (repo *repository) Manifests(ctx context.Context, options ...distribution.M
 	}
 
 	referrerMetadataFunc := func(manifestDigest digest.Digest, metadataMediaType string) *linkedBlobStore {
-		sha256Bytes := sha256.Sum256([]byte(strings.ToLower(metadataMediaType)))
-		canonical := fmt.Sprint(binary.BigEndian.Uint32(sha256Bytes[:]))
+		// NOTE (aviral26)
+		// This might cause a problem on Windows file system because of long file path length.
+		// A workaround is to run the registry using wsl2.
+		canonical := strings.Split(
+			digest.FromString(strings.ToLower(metadataMediaType)).String(),
+			":")[1]
 
 		return &linkedBlobStore{
 			blobStore:  repo.blobStore,
