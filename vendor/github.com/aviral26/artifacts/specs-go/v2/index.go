@@ -14,24 +14,17 @@
 
 package v2
 
-import (
-	"github.com/opencontainers/image-spec/specs-go"
-	v1 "github.com/opencontainers/image-spec/specs-go/v1"
-)
-
 // Index references manifests for various platforms.
 // This structure provides `application/vnd.oci.image.index.v2+json` mediatype when marshalled to JSON.
 type Index struct {
-	specs.Versioned
-
 	// MediaType is the media type of the object this schema refers to.
 	MediaType string `json:"mediaType,omitempty"`
 
 	// Config references the index configuration.
-	Config v1.Descriptor `json:"config,omitempty"`
+	Config Descriptor `json:"config,omitempty"`
 
 	// Manifests references platform specific manifests.
-	Manifests []v1.Descriptor `json:"manifests"`
+	Manifests []Descriptor `json:"manifests"`
 
 	// Annotations contains arbitrary metadata for the image index.
 	Annotations map[string]string `json:"annotations,omitempty"`

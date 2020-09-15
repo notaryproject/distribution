@@ -9,6 +9,7 @@ import (
 	"github.com/docker/distribution"
 	"github.com/docker/distribution/manifest"
 	"github.com/opencontainers/go-digest"
+	v1 "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
 // OCISchemaVersion provides a pre-initialized version structure for this
@@ -56,7 +57,7 @@ func (oi OCIIndex) References() []distribution.Descriptor {
 			MediaType:   oi.Manifests[i].MediaType,
 			Annotations: oi.Manifests[i].Annotations,
 			Digest:      oi.Manifests[i].Digest,
-			Platform:    oi.Manifests[i].Platform,
+			Platform:    toV1(oi.Manifests[i].Platform),
 			Size:        oi.Manifests[i].Size,
 			URLs:        oi.Manifests[i].URLs,
 		}
@@ -112,4 +113,17 @@ func (doi DeserializedOCIIndex) Payload() (string, []byte, error) {
 	}
 
 	return mediaType, doi.canonical, nil
+}
+
+func toV1(plat *v2.Platform) *v1.Platform {
+	if plat == nil {
+		return nil
+	}
+	return &v1.Platform{
+		Architecture: plat.Architecture,
+		OS:           plat.OS,
+		OSVersion:    plat.OSVersion,
+		OSFeatures:   plat.OSFeatures,
+		Variant:      plat.Variant,
+	}
 }

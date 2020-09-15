@@ -68,10 +68,6 @@ func (oih *ociIndexHandler) Put(ctx context.Context, ociIndex distribution.Manif
 func (oih *ociIndexHandler) verifyManifest(ctx context.Context, doi ociindex.DeserializedOCIIndex, skipDependencyVerification bool) error {
 	var errs distribution.ErrManifestVerification
 
-	if doi.SchemaVersion != 2 {
-		return fmt.Errorf("unrecognized manifest list schema version %d", doi.SchemaVersion)
-	}
-
 	if !skipDependencyVerification {
 		// This manifest service is different from the blob service
 		// returned by Blob. It uses a linked blob store to ensure that
