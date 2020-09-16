@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	v2 "github.com/aviral26/artifacts/specs-go/v2"
+	v2 "github.com/notaryproject/artifacts/specs-go/v2"
 	"github.com/docker/distribution"
 	"github.com/docker/distribution/manifest"
 	"github.com/opencontainers/go-digest"

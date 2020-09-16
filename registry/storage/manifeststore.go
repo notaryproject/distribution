@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	v2 "github.com/aviral26/artifacts/specs-go/v2"
+	v2 "github.com/notaryproject/artifacts/specs-go/v2"
 	"github.com/docker/distribution"
 	dcontext "github.com/docker/distribution/context"
 	"github.com/docker/distribution/manifest"
