@@ -2,6 +2,8 @@ module github.com/docker/distribution
 
 go 1.12
 
+replace github.com/notaryproject/artifacts => ../artifacts
+
 require (
 	github.com/Azure/azure-sdk-for-go v16.2.1+incompatible
 	github.com/Azure/go-autorest v10.8.1+incompatible // indirect
@@ -29,7 +31,8 @@ require (
 	github.com/mitchellh/mapstructure v1.1.2
 	github.com/mitchellh/osext v0.0.0-20151018003038-5e2d6d41470f // indirect
 	github.com/ncw/swift v1.0.47
-	github.com/opencontainers/go-digest v1.0.0-rc1
+	github.com/notaryproject/artifacts v0.0.0-00010101000000-000000000000
+	github.com/opencontainers/go-digest v1.0.0
 	github.com/opencontainers/image-spec v1.0.1
 	github.com/satori/go.uuid v1.2.0 // indirect
 	github.com/sirupsen/logrus v1.4.2

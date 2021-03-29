@@ -61,6 +61,11 @@ type ManifestService interface {
 	// Delete removes the manifest specified by the given digest. Deleting
 	// a manifest that doesn't exist will return ErrManifestNotFound
 	Delete(ctx context.Context, dgst digest.Digest) error
+
+	// Referrers returns a collection of referrer manifests, filtered by referrerType.
+	// A referrer manifest describes an object that has a uni-directional link -->, of
+	// type referrerType, to the manifest described by the given dgst.
+	Referrers(ctx context.Context, dgst digest.Digest, referrerType string) ([]Manifest, error)
 }
 
 // ManifestEnumerator enables iterating over manifests
