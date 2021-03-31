@@ -707,7 +707,7 @@ var routeDescriptors = []RouteDescriptor{
 
 	{
 		Name:        RouteNameManifestLinkedArtifacts,
-		Path:        "/v2/_ext/oci-artifacts/v1/{name:" + reference.NameRegexp.String() + "}/manifests/{reference:" + reference.TagRegexp.String() + "|" + digest.DigestRegexp.String() + "}/links",
+		Path:        "/v2/_ext/oci-artifacts/v1/{name:" + reference.NameRegexp.String() + "}/manifests/{reference:" + reference.TagRegexp.String() + "|" + digest.DigestRegexp.String() + "}/references",
 		Entity:      "Linked artifacts",
 		Description: "Retrieve information about artifacts linked to this manifest.",
 		Methods: []MethodDescriptor{

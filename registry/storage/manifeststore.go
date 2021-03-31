@@ -14,7 +14,7 @@ import (
 	"github.com/docker/distribution/manifest/schema1"
 	"github.com/docker/distribution/manifest/schema2"
 	"github.com/docker/distribution/registry/storage/driver"
-	v2 "github.com/notaryproject/artifacts/specs-go/v2"
+	v2 "github.com/opencontainers/artifacts/specs-go/v2"
 	"github.com/opencontainers/go-digest"
 	v1 "github.com/opencontainers/image-spec/specs-go/v1"
 )
@@ -158,19 +158,19 @@ func (ms *manifestStore) Put(ctx context.Context, manifest distribution.Manifest
 }
 
 // Referrers returns referrer manifests filtered by the given referrerType.
-func (ms *manifestStore) Referrers(ctx context.Context, dgst digest.Digest, referrerType string) ([]distribution.Manifest, error) {
+func (ms *manifestStore) Referrers(ctx context.Context, dgst digest.Digest, referrerType string) ([]distribution.ManifestDigestAndData, error) {
 	dcontext.GetLogger(ms.ctx).Debug("(*manifestStore).Referrers")
 
 	referrerMetadataStore := ms.referrersStoreFunc(dgst, referrerType)
 
-	var referrerManifests []distribution.Manifest
+	var referrerManifests []distribution.ManifestDigestAndData
 
 	err := referrerMetadataStore.Enumerate(ctx, func(referrerManifestDgst digest.Digest) error {
 		referrerManifest, err := ms.Get(ctx, referrerManifestDgst)
 		if err != nil {
 			return err
 		}
-		referrerManifests = append(referrerManifests, referrerManifest)
+		referrerManifests = append(referrerManifests, distribution.ManifestDigestAndData{Digest: referrerManifestDgst, Manifest: referrerManifest})
 		return nil
 	})
 

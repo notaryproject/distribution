@@ -47,6 +47,12 @@ type ManifestBuilder interface {
 	AppendReference(dependency Describable) error
 }
 
+// ManifestDigestAndData specifies a Manifest along with its digest.
+type ManifestDigestAndData struct {
+	Digest   digest.Digest `json:"digest"`
+	Manifest `json:"manifest"`
+}
+
 // ManifestService describes operations on image manifests.
 type ManifestService interface {
 	// Exists returns true if the manifest exists.
@@ -65,7 +71,7 @@ type ManifestService interface {
 	// Referrers returns a collection of referrer manifests, filtered by referrerType.
 	// A referrer manifest describes an object that has a uni-directional link -->, of
 	// type referrerType, to the manifest described by the given dgst.
-	Referrers(ctx context.Context, dgst digest.Digest, referrerType string) ([]Manifest, error)
+	Referrers(ctx context.Context, dgst digest.Digest, referrerType string) ([]ManifestDigestAndData, error)
 }
 
 // ManifestEnumerator enables iterating over manifests

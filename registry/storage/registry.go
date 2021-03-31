@@ -250,13 +250,18 @@ func (repo *repository) Manifests(ctx context.Context, options ...distribution.M
 	}
 
 	referrersStoreFuncImpl := func(referredRevision digest.Digest, referrerTypeRaw string) *linkedBlobStore {
-		// NOTE (aviral26)
-		// This might cause a problem on Windows file system because of long file paths.
-		// A workaround is to run this server using wsl2.
-		//
-		// The choice for using sha256 digests as referrer types is completely arbitrary and intended
-		// to be used just in this prototype for demo purposes.
-		referrerType := strings.Split(digest.FromString(referrerTypeRaw).String(), ":")[1]
+		referrerType := ""
+		// PUT api handler validates that referrerType is not empty
+		// Referrer listing api allows an empty referrerType.
+		if referrerTypeRaw != "" {
+			// NOTE (aviral26)
+			// This might cause a problem on Windows file system because of long file paths.
+			// A workaround is to run this server using wsl2.
+			//
+			// The choice for using sha256 digests as referrer types is completely arbitrary and intended
+			// to be used just in this prototype for demo purposes.
+			referrerType = strings.Split(digest.FromString(referrerTypeRaw).String(), ":")[1]
+		}
 
 		return &linkedBlobStore{
 			blobStore:  repo.blobStore,

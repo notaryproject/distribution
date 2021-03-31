@@ -366,7 +366,7 @@ type manifests struct {
 	etags  map[string]string
 }
 
-func (ms *manifests) Referrers(_ context.Context, _ digest.Digest, _ string) ([]distribution.Manifest, error) {
+func (ms *manifests) Referrers(_ context.Context, _ digest.Digest, _ string) ([]distribution.ManifestDigestAndData, error) {
 	return nil, fmt.Errorf("not implemented")
 }
 
