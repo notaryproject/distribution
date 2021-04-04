@@ -93,6 +93,8 @@ github.com/mitchellh/mapstructure
 # github.com/ncw/swift v1.0.47
 github.com/ncw/swift
 github.com/ncw/swift/swifttest
+# github.com/notaryproject/artifacts v0.0.0-20200916021946-9d10a670db1b
+github.com/notaryproject/artifacts/specs-go/v2
 # github.com/opencontainers/go-digest v1.0.0-rc1
 github.com/opencontainers/go-digest
 # github.com/opencontainers/image-spec v1.0.1
