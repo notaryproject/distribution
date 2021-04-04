@@ -7,7 +7,6 @@ import (
 	"github.com/docker/distribution"
 	dcontext "github.com/docker/distribution/context"
 	"github.com/docker/distribution/manifest/artifact"
-	v2 "github.com/notaryproject/artifacts/specs-go/v2"
 	"github.com/opencontainers/go-digest"
 )
 
@@ -69,13 +68,11 @@ func (ah *ociArtifactHandler) Put(ctx context.Context, artifactManfiest distribu
 func (ah *ociArtifactHandler) verifyManifest(ctx context.Context, da artifact.DeserializedArtifact, skipDependencyVerification bool) error {
 	var errs distribution.ErrManifestVerification
 
+	if da.ArtifactType() == "" {
+		errs = append(errs, distribution.ErrArtifactTypeUnsupported{ArtifactType: ""})
+	}
+
 	if !skipDependencyVerification {
-
-		daArtifactType := da.ArtifactType()
-		if daArtifactType != v2.ArtifactTypeNotaryV2 {
-			return append(errs, distribution.ErrArtifactTypeUnsupported{ArtifactType: daArtifactType})
-		}
-
 		blobStore := ah.repository.Blobs(ctx)
 
 		// All references must exist.

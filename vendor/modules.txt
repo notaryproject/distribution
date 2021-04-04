@@ -10,8 +10,6 @@ github.com/Azure/go-autorest/autorest/azure
 github.com/Azure/go-autorest/autorest/date
 # github.com/Shopify/logrus-bugsnag v0.0.0-20171204204709-577dee27f20d
 github.com/Shopify/logrus-bugsnag
-# github.com/aviral26/artifacts v0.0.0-20210226112717-56144013f039
-github.com/aviral26/artifacts/specs-go/v2
 # github.com/aws/aws-sdk-go v1.15.11
 github.com/aws/aws-sdk-go/aws
 github.com/aws/aws-sdk-go/aws/awserr
@@ -95,7 +93,10 @@ github.com/mitchellh/mapstructure
 # github.com/ncw/swift v1.0.47
 github.com/ncw/swift
 github.com/ncw/swift/swifttest
-# github.com/opencontainers/go-digest v1.0.0-rc1
+# github.com/opencontainers/artifacts v0.0.0-00010101000000-000000000000 => github.com/aviral26/artifacts v0.0.0-20210401062346-2b83ac8c6d72
+github.com/opencontainers/artifacts/specs-go
+github.com/opencontainers/artifacts/specs-go/v2
+# github.com/opencontainers/go-digest v1.0.0
 github.com/opencontainers/go-digest
 # github.com/opencontainers/image-spec v1.0.1
 github.com/opencontainers/image-spec/specs-go

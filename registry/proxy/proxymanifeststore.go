@@ -25,7 +25,7 @@ type proxyManifestStore struct {
 
 var _ distribution.ManifestService = &proxyManifestStore{}
 
-func (pms proxyManifestStore) Referrers(_ context.Context, _ digest.Digest, _ string) ([]distribution.Manifest, error) {
+func (pms proxyManifestStore) Referrers(_ context.Context, _ digest.Digest, _ string) ([]distribution.ManifestDigestAndData, error) {
 	return nil, distribution.ErrUnsupported
 }
 

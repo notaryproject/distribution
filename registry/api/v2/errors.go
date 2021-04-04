@@ -70,14 +70,6 @@ var (
 		HTTPStatusCode: http.StatusNotFound,
 	})
 
-	// ErrorCodeArtifactTypeUnspecified is returned when the image manifest link artifact type is not specified.
-	ErrorCodeArtifactTypeUnspecified = errcode.Register(errGroup, errcode.ErrorDescriptor{
-		Value:          "ARTIFACT_TYPE_UNSPECIFIED",
-		Message:        "manifest link artifact type is not specified",
-		Description:    `This error is returned when the manifest link artifact type is not specified.`,
-		HTTPStatusCode: http.StatusBadRequest,
-	})
-
 	// ErrorCodeManifestInvalid returned when an image manifest is invalid,
 	// typically during a PUT operation. This error encompasses all errors
 	// encountered during manifest validation that aren't signature errors.

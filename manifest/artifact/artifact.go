@@ -7,7 +7,7 @@ import (
 
 	"github.com/docker/distribution"
 	"github.com/docker/distribution/manifest"
-	v2 "github.com/notaryproject/artifacts/specs-go/v2"
+	v2 "github.com/opencontainers/artifacts/specs-go/v2"
 	"github.com/opencontainers/go-digest"
 )
 
