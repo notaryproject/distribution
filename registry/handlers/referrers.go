@@ -35,10 +35,10 @@ func referrersDispatcher(ctx *Context, r *http.Request) http.Handler {
 }
 
 type referrersResponse struct {
-	Digest   digest.Digest                        `json:"digest,omitempty"`
-	Tag      string                               `json:"tag,omitempty"`
-	Links    []distribution.ManifestDigestAndData `json:"links"`
-	NextLink string                               `json:"nextLink"`
+	Digest    digest.Digest                        `json:"digest,omitempty"`
+	Tag       string                               `json:"tag,omitempty"`
+	Referrers []distribution.ManifestDigestAndData `json:"references"`
+	NextLink  string                               `json:"nextLink"`
 }
 
 // referrersHandler handles http operations on image manifest referrers.
@@ -91,7 +91,7 @@ func (mrmh *referrersHandler) Artifacts(w http.ResponseWriter, r *http.Request) 
 		referrers = []distribution.ManifestDigestAndData{}
 	}
 
-	response := referrersResponse{Links: referrers, NextLink: "not implemented"}
+	response := referrersResponse{Referrers: referrers, NextLink: "not implemented"}
 	if mrmh.Tag != "" {
 		response.Tag = mrmh.Tag
 	} else {
