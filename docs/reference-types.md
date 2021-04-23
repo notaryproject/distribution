@@ -4,8 +4,8 @@ To support [Notary v2 goals][notaryv2-goals], upload, persistence and discovery 
 
 This document represents prototype-2 which:
 
-- Implements a proposed [oci.artifact.manifest][oci-artifact-manifest], utilizing a `[manifest-refs]` collection
-- Implements the [oci.artifact.manifest][oci-artifact-manifest] `/v2/_ext/oci-artifacts/v1/{repository}/manifests/{digest}/referrers` API to identify referenced artifacts. Such as what signatures, or SBoMs refer to a specific container image.
+- Implements a proposed [oci.artifact.manifest][oci-artifact-manifest], utilizing a `[manifests]` collection
+- Implements the [oci.artifact.manifest][oci-artifact-manifest] `/v2/_ext/oci-artifacts/v1/{repository}/manifests/{digest}/references` API to identify referenced artifacts. Such as what signatures, or SBoMs refer to a specific container image.
 
 ## Table of Contents
 
@@ -16,7 +16,7 @@ This document represents prototype-2 which:
 
 ## Reference Persistence
 
-The [oci.artifact.manifest spec][oci-artifact-manifest-spec] outlines how reference types may be added to a registry creating a single references, such as signed content to a graph of reference including signed Software Bill of Materials (SBoMs).
+The [oci.artifact.manifest spec][oci-artifact-manifest-spec] outlines how reference types may be added to a registry. Reference manifests support single references, such as signatures to a graph of references including signed Software Bill of Materials (SBoMs).
 
 ![](media/net-monitor-graph.svg)
 
@@ -24,11 +24,11 @@ The [oci.artifact.manifest spec][oci-artifact-manifest-spec] outlines how refere
 
 Pulling content from a registry is performed via a `tag` or `digest` reference. However, reference types are considered enhancements to existing artifacts, which asks the question; how do you discover the enhancements of an artifact?
 
-To query the artifacts which reference `net-monitor:v1`, the [oci.artifact.manifest spec][oci-artifact-manifest-spec] provides a [referrers api][oci-artifact-referrers-api] as an extension to the [distribution-spec][oci-distribution-spec]:  
+To query the artifacts which reference `net-monitor:v1`, the [oci.artifact.manifest spec][oci-artifact-manifest-spec] provides a [references api][oci-artifact-referrers-api] as an extension to the [distribution-spec][oci-distribution-spec]:  
 `GET {registry}/v2/_ext/oci-artifacts/v1/{repository}/manifests/{digest}/references`
 
 To query references of `net-monitor:v1`, with an `artifactType:application/vnd.cncf.notary.v2`, the following API would be used:  
-`GET {registry}/v2/_ext/oci-artifacts/v1/net-monitor/manifests/sha256:73c803930ea3ba1e54bc25c2bdc53edd0284c62ed651fe7b00369da519a3c333/references?artifactType=application/vnd.cncf.notary.v2`
+`GET {registry}/v2/_ext/oci-artifacts/v1/net-monitor/manifests/sha256:73c803930ea3ba1e54bc25c2bdc53edd0284c62ed651fe7b00369da519a3c333/references?artifact-type=application/vnd.cncf.notary.v2`
 
 ## Persisting Reference Types
 
@@ -36,7 +36,7 @@ To query references of `net-monitor:v1`, with an `artifactType:application/vnd.c
 
 ### Put an OCI artifact by digest, linking a signature to a collection of manifests
 
-Using the existing [OCI distribution-spec push][oci-dist-spec-manifest-put] api to push an [oci.artifact.manifest][oci-image-manifest-spec] with the added `"artifactType": "application/vnd.cncf.notary.v2"`  and a `[manifests]` reference pointing to the digest of the `net-monitor:v1` image
+Using the existing [OCI distribution-spec push][oci-dist-spec-manifest-put] api to push an [oci.artifact.manifest][oci-image-manifest-spec] with the added `"artifactType": "application/vnd.cncf.notary.v2"`  and a `[manifests]` reference containing the descriptor of the `net-monitor:v1` image.
 
 ```bash
 DIGEST=$(sha256sum net-monitor-v1-signature.json | cut -d' ' -f1)
@@ -160,20 +160,20 @@ Using the experimental branch of CNCF Distribution, on `PUT` of an `oci.artifact
             └── _manifests
                 └── revisions
                     └── sha256
-                        ├── 73c803930ea3ba1e54bc25c2bdc53edd0284c62ed651fe7b00369da519a3c333 (image)
+                        ├── 73c803930ea3ba1e54bc25c2bdc53edd0284c62ed651fe7b00369da519a3c333 (image manifest)
                         │   ├── link
                         │   └── ref
                         │       └── digest(application/vnd.cncf.notary.v2)
                         │           └── sha256
-                        │               └── 8ac803930ea3ba1e54bc25c2bdc53edd0284c62ed651fe7b00369da519a3c222 (signature)
+                        │               └── 8ac803930ea3ba1e54bc25c2bdc53edd0284c62ed651fe7b00369da519a3c222 (signature manifest)
                         │                   └── link
-                        └── 8ac803930ea3ba1e54bc25c2bdc53edd0284c62ed651fe7b00369da519a3c222 (signature)
+                        └── 8ac803930ea3ba1e54bc25c2bdc53edd0284c62ed651fe7b00369da519a3c222 (signature manifest)
                             └── link
 ```
 
-> NOTE: the node immediately below `ref` is the `oci.image.manifest.artifactType` of the manifest. This node provides the indexing by type. Since `mediaTypes` contain invalid characters for storage (`/`, `.`), the value of `oci.image.manifest.artifactType` is converted to a digest when persisted to local storage.
+> NOTE: the node immediately below `ref` is the `oci.image.manifest.artifactType` of the manifest. This node provides the indexing by `artifactType`. Since `artifactTypes` contain invalid characters for storage (`/`, `.`), the value of `oci.image.manifest.artifactType` is converted to a digest when persisted to local storage.
 
-To represent an image which is signed, with an SBoM which is also signed, the following persistance would be made:
+To represent an image which is signed, with an SBoM which is also signed, the following persistence would be made:
 
 ![](media/net-monitor-graph.svg)
 
@@ -185,27 +185,27 @@ To represent an image which is signed, with an SBoM which is also signed, the fo
             └── _manifests
                 └── revisions
                     └── sha256
-                        ├── 73c803930ea3ba1e54bc25c2bdc53edd0284c62ed651fe7b00369da519a3c333 (net-monitor:v1 image)
+                        ├── 73c803930ea3ba1e54bc25c2bdc53edd0284c62ed651fe7b00369da519a3c333 (net-monitor:v1 image manifest)
                         │   ├── link
                         │   └── ref
                         │       └── digest(application/vnd.cncf.notary.v2)
                         │       │   └── sha256
-                        │       │       └── 8ac803930ea3ba1e54bc25c2bdc53edd0284c62ed651fe7b00369da519a3c222 (net-monitor:v1 signature)
+                        │       │       └── 8ac803930ea3ba1e54bc25c2bdc53edd0284c62ed651fe7b00369da519a3c222 (net-monitor:v1 signature manifest)
                         │       │           └── link
                         │       └── digest(application/vnd.example.sbom.v0)
                         │           └── sha256
-                        │               └── sb1cb130c152895905abe66279dd9feaa68091ba55619f5b900f2ebed38b222c (net-monitor:v1 sbom)
+                        │               └── sb1cb130c152895905abe66279dd9feaa68091ba55619f5b900f2ebed38b222c (net-monitor:v1 sbom manifest)
                         │                   └── link
-                        └── 8ac803930ea3ba1e54bc25c2bdc53edd0284c62ed651fe7b00369da519a3c222 (net-monitor:v1 signature)
+                        └── 8ac803930ea3ba1e54bc25c2bdc53edd0284c62ed651fe7b00369da519a3c222 (net-monitor:v1 signature manifest)
                         │   └── link
-                        └── sb1cb130c152895905abe66279dd9feaa68091ba55619f5b900f2ebed38b222c (net-monitor:v1 sbom)
+                        └── sb1cb130c152895905abe66279dd9feaa68091ba55619f5b900f2ebed38b222c (net-monitor:v1 sbom manifest)
                         │   └── link
                         │   └── ref
                         │       └── digest(application/vnd.cncf.notary.v2)
                         │           └── sha256
-                        │               └── sb2cb130c152895905abe66279dd9feaa68091ba55619f5b900f2ebed38b222c (net-monitor:v1 sbom signature)
+                        │               └── sb2cb130c152895905abe66279dd9feaa68091ba55619f5b900f2ebed38b222c (net-monitor:v1 sbom signature manifest)
                         │                   └── link
-                        └── sb2cb130c152895905abe66279dd9feaa68091ba55619f5b900f2ebed38b222c (net-monitor:v1 sbom signature)
+                        └── sb2cb130c152895905abe66279dd9feaa68091ba55619f5b900f2ebed38b222c (net-monitor:v1 sbom signature manifest)
                             └── link
 ```
 
@@ -219,10 +219,10 @@ Using the above persistence model, the individual artifacts can be found in the 
             └── _manifests
                 └── revisions
                     └── sha256
-                        ├── 73c803930ea3ba1e54bc25c2bdc53edd0284c62ed651fe7b00369da519a3c333 (net-monitor:v1 image)
-                        └── 8ac803930ea3ba1e54bc25c2bdc53edd0284c62ed651fe7b00369da519a3c222 (net-monitor:v1 signature)
-                        └── sb1cb130c152895905abe66279dd9feaa68091ba55619f5b900f2ebed38b222c (net-monitor:v1 sbom)
-                        └── sb2cb130c152895905abe66279dd9feaa68091ba55619f5b900f2ebed38b222c (net-monitor:v1 sbom signature)
+                        ├── 73c803930ea3ba1e54bc25c2bdc53edd0284c62ed651fe7b00369da519a3c333 (net-monitor:v1 image manifest)
+                        └── 8ac803930ea3ba1e54bc25c2bdc53edd0284c62ed651fe7b00369da519a3c222 (net-monitor:v1 signature manifest)
+                        └── sb1cb130c152895905abe66279dd9feaa68091ba55619f5b900f2ebed38b222c (net-monitor:v1 sbom manifest)
+                        └── sb2cb130c152895905abe66279dd9feaa68091ba55619f5b900f2ebed38b222c (net-monitor:v1 sbom signature manifest)
 ```
 
 With the `ref` identifying the reverse index:
@@ -235,14 +235,14 @@ With the `ref` identifying the reverse index:
             └── _manifests
                 └── revisions
                     └── sha256
-                        ├── 73c803930ea3ba1e54bc25c2bdc53edd0284c62ed651fe7b00369da519a3c333 (net-monitor:v1 image)
+                        ├── 73c803930ea3ba1e54bc25c2bdc53edd0284c62ed651fe7b00369da519a3c333 (net-monitor:v1 image manifest)
                         │   ├── link
                         │   └── ref
                         │       └── digest(application/vnd.cncf.notary.v2)
                         │       │   └── sha256
-                        │       │       └── 8ac803930ea3ba1e54bc25c2bdc53edd0284c62ed651fe7b00369da519a3c222 (net-monitor:v1 signature)
+                        │       │       └── 8ac803930ea3ba1e54bc25c2bdc53edd0284c62ed651fe7b00369da519a3c222 (net-monitor:v1 signature manifest)
                         │       │           └── link
-                        └── 8ac803930ea3ba1e54bc25c2bdc53edd0284c62ed651fe7b00369da519a3c222 (net-monitor:v1 signature)
+                        └── 8ac803930ea3ba1e54bc25c2bdc53edd0284c62ed651fe7b00369da519a3c222 (net-monitor:v1 signature manifest)
                         │   └── link
 ```
 
